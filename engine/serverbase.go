@@ -1,8 +1,12 @@
 package engine
 
 type ServerBase struct {
-	ServerName string
-	ServerId   string
+	ServerName 				string
+	ServerId   				string
+	ServerType 				int
+	ConnectCount			int
+	TotalConnectCount		int
+
 }
 
 //启动之前的设置
