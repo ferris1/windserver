@@ -12,8 +12,11 @@ type ServerBase struct {
 	requestQueue 			utilize.EsQueue
 	// 消息回调函数注册 应该是个回调函数
 	commandMap				map[string]string
+	// 服务器组管理
 	serverGroupMgr 			ServerGroupManager
+	// 连接管理
 	connMgr					ConnManager
+	// 消息中间件
 	natsClient				NatsClient
 }
 
@@ -24,7 +27,7 @@ func (s *ServerBase) SetUp() {
 
 }
 
-// RPC框架  这个实现上好像比较麻烦
+// RPC框架
 func (s *ServerBase) Register() {
 	// 回调信息注册
 

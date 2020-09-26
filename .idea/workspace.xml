@@ -20,8 +20,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d8efe962-7375-410c-8fad-826cda674706" name="Default Changelist" comment="commit server framework">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/serialize/proto/hello.proto" beforeDir="false" afterPath="$PROJECT_DIR$/serialize/proto/test.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/engine/serverBase.go" beforeDir="false" afterPath="$PROJECT_DIR$/engine/serverBase.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -96,11 +95,11 @@
     </state>
     <state x="602" y="374" key="#GOROOT/0.0.1536.864@0.0.1536.864" timestamp="1600523520321" />
     <state x="752" y="450" key="#GOROOT/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1600044114268" />
-    <state x="686" y="225" key="FileChooserDialogImpl" timestamp="1600045439103">
+    <state x="686" y="225" key="FileChooserDialogImpl" timestamp="1601116149108">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="549" y="187" key="FileChooserDialogImpl/0.0.1536.864@0.0.1536.864" timestamp="1599881958173" />
-    <state x="686" y="225" key="FileChooserDialogImpl/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1600045439103" />
+    <state x="686" y="225" key="FileChooserDialogImpl/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1601116149108" />
     <state x="264" y="168" key="SettingsEditor" timestamp="1600306301332">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
