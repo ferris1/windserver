@@ -20,13 +20,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d8efe962-7375-410c-8fad-826cda674706" name="Default Changelist" comment="commit server framework">
-      <change afterPath="$PROJECT_DIR$/engine/connManager.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/logger.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/natsClient.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/engine/serverGroupManager.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utilize/esQueue.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/engine/serverbase.go" beforeDir="false" afterPath="$PROJECT_DIR$/engine/serverBase.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,7 +34,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" path="D:/developmentTool/go" />
+  <component name="GOROOT" path="D:\Go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -95,9 +89,10 @@
     <option name="LAST_COMMIT_MESSAGE" value="commit server framework" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="752" y="450" key="#GOROOT" timestamp="1600044114268">
-      <screen x="0" y="0" width="1920" height="1040" />
+    <state x="602" y="374" key="#GOROOT" timestamp="1600523520321">
+      <screen x="0" y="0" width="1536" height="864" />
     </state>
+    <state x="602" y="374" key="#GOROOT/0.0.1536.864@0.0.1536.864" timestamp="1600523520321" />
     <state x="752" y="450" key="#GOROOT/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1600044114268" />
     <state x="686" y="225" key="FileChooserDialogImpl" timestamp="1600045439103">
       <screen x="0" y="0" width="1920" height="1040" />
