@@ -2,6 +2,7 @@ package engine
 
 import "github.com/ferris1/windserver/utilize"
 
+// engine更多做的是单个进程中服务消息分发
 type ServerBase struct {
 	ServerName 				string
 	ServerId   				string

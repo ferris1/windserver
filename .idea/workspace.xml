@@ -20,7 +20,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d8efe962-7375-410c-8fad-826cda674706" name="Default Changelist" comment="commit server framework">
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/any.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/api.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/compiler/plugin.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/descriptor.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/duration.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/empty.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/field_mask.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/source_context.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/struct.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/timestamp.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/type.proto" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/serialize/proto/google/protobuf/wrappers.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/engine/serverBase.go" beforeDir="false" afterPath="$PROJECT_DIR$/engine/serverBase.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/serialize/proto/test.proto" beforeDir="false" afterPath="$PROJECT_DIR$/serialize/proto/engine/test.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/serialize/protoc.exe" beforeDir="false" afterPath="$PROJECT_DIR$/serialize/proto/protoc.exe" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,7 +49,7 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" path="D:\Go" />
+  <component name="GOROOT" path="D:/developmentTool/go" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
@@ -46,11 +61,15 @@
     </option>
   </component>
   <component name="ProjectId" id="1h7LcIgvbQnkIC9pRi3GlLZLKNm" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="DefaultGoTemplateProperty" value="Go File" />
     <property name="GO_FMT" value="true" />
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
@@ -65,6 +84,8 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="E:\MyProject\go\src\github.com\ferris1\windserver\serialize\proto" />
+      <recent name="E:\MyProject\go\src\github.com\ferris1\windserver\serialize\proto\engine" />
       <recent name="D:\develepment\go\src\github.com\ferris1\windserver\thirdParty\protobuf" />
       <recent name="E:\MyProject\go\src\github.com\ferris1\windserver\utilize" />
     </key>
@@ -86,15 +107,16 @@
     <option name="oldMeFiltersMigrated" value="true" />
   </component>
   <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="commit server framework" />
     <option name="LAST_COMMIT_MESSAGE" value="commit server framework" />
   </component>
   <component name="WindowStateProjectService">
-    <state x="602" y="374" key="#GOROOT" timestamp="1600523520321">
-      <screen x="0" y="0" width="1536" height="864" />
+    <state x="752" y="450" key="#GOROOT" timestamp="1601116735571">
+      <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="602" y="374" key="#GOROOT/0.0.1536.864@0.0.1536.864" timestamp="1600523520321" />
-    <state x="752" y="450" key="#GOROOT/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1600044114268" />
+    <state x="752" y="450" key="#GOROOT/0.0.1920.1040/1920.0.1920.1040@0.0.1920.1040" timestamp="1601116735571" />
     <state x="686" y="225" key="FileChooserDialogImpl" timestamp="1601116149108">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
