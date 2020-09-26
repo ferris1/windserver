@@ -20,8 +20,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d8efe962-7375-410c-8fad-826cda674706" name="Default Changelist" comment="commit server framework">
-      <change afterPath="$PROJECT_DIR$/network/network.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/serialize/proto/hello.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/serialize/proto/hello.proto" beforeDir="false" afterPath="$PROJECT_DIR$/serialize/proto/test.proto" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,6 +66,7 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\develepment\go\src\github.com\ferris1\windserver\thirdParty\protobuf" />
       <recent name="E:\MyProject\go\src\github.com\ferris1\windserver\utilize" />
     </key>
   </component>
