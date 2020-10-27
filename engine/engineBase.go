@@ -2,7 +2,7 @@ package engine
 
 import "github.com/ferris1/windserver/utilize"
 
-type ServerBase struct {
+type EngineBase struct {
 	ServerName 				string
 	ServerId   				string
 	ServerType 				int
@@ -18,25 +18,25 @@ type ServerBase struct {
 }
 
 //启动之前的设置
-func (s *ServerBase) SetUp() {
+func (s *EngineBase) SetUp() {
 	// 注册服务器信息,监听服务,启动心跳
 	// 连接消息中间件,报告服务器压力
 
 }
 
 // RPC框架  这个实现上好像比较麻烦
-func (s *ServerBase) Register() {
+func (s *EngineBase) Register() {
 	// 回调信息注册
 
 }
 
 // 启动服务器
-func (s *ServerBase) StartService() {
+func (s *EngineBase) StartService() {
 	// 到etcd中注册服务器信息
 	// 启动消息处理线程
 }
 
 // 退出服务器
-func (s *ServerBase) ExitService() {
+func (s *EngineBase) ExitService() {
 
 }
