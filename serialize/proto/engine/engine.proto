@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package engine;
+
+// this is a comment
+message SyncServerInfo {
+  string serverId = 1;
+  string serverName = 2;
+}
