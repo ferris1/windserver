@@ -8,7 +8,7 @@ type windServerBase struct {
 	totalConnectCount		int
 	serverExited			bool
 	// player 请求信息发送
-	requestChannel 			chan requestInterface
+	requestChannel 			chan requestMessage
 	// 消息回调函数注册 应该是个回调函数
 	commandMap				map[string]string
 	// 服务器组管理
@@ -25,7 +25,7 @@ func (s *windServerBase) SetUp() {
 	// 连接消息中间件,报告服务器压力
 	// 数据初始化
 	s.totalConnectCount = ServerMaxConnect
-	s.requestChannel = make(chan requestInterface,s.totalConnectCount)
+	s.requestChannel = make(chan requestMessage,s.totalConnectCount)
 }
 
 // RPC框架  这个实现上好像比较麻烦
@@ -48,8 +48,15 @@ func (s *windServerBase) ExitService() {
 }
 
 func (s *windServerBase) handleRequestQueue() {
+	//
 	for s.serverExited {
-
+		for request := range s.requestChannel {
+			sid := s.getPlayerServerIdByType(request.playerId,request.serverType)
+		}
 	}
+}
+
+func (s *windServerBase) getPlayerServerIdByType(playerId string,serverType int) string {
+	return ""
 }
 

@@ -1,6 +1,6 @@
 package engine
 
-type requestInterface struct{
+type requestMessage struct{
 	playerId 		string
 	serverType 		int
 	command  		string
