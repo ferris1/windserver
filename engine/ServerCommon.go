@@ -1,6 +1,6 @@
 package engine
 
-type requestMessage struct{
+type RequestMessage struct{
 	playerId 		string
 	serverType 		int
 	command  		string
@@ -8,3 +8,4 @@ type requestMessage struct{
 }
 
 const ServerMaxConnect = 3000
+const UseRedisCluster = true
