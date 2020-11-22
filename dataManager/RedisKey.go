@@ -8,4 +8,7 @@ func MakeRedisKey(prefix string,targetHash string,target string) string {
 	return RedisDbName + prefix + sep1 + targetHash +  sep2 + target
 }
 
+func GetPlayerServer(playerId string, serverType int) string {
+	return ""
+}
 

@@ -27,16 +27,15 @@ func (s *WindServerBase) SetUp() {
 	// 注册服务器信息,监听服务,启动心跳
 	// 连接消息中间件,报告服务器压力
 	// 数据初始化
-	s.totalConnectCount = ServerMaxConnect
-
+	s.totalConnectCount = SERVERMAXCONNECT
+	// 引擎层可能不需要redis的功能，不过已经接入的话，就先放着
 	s.RedisClient = dataManager.WindServerRedisClient{}
-	s.RedisClient.ClientInit("localhost:6379","")
+	s.RedisClient.ClientInit(RedisClusterConf,"")
 }
 
 // RPC框架  这个实现上好像比较麻烦
 // 事件注册:如网络事件注册
 func (s *WindServerBase) Register() {
-
 
 }
 
@@ -53,8 +52,8 @@ func (s *WindServerBase) ExitService() {
 }
 
 func (s *WindServerBase) handleRequestQueue() {
-	//
 	for s.serverExited {
+		// 这里要确保 先调用的先发送
 		for request := range s.requestChannel {
 
 		}
