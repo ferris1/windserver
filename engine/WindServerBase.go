@@ -43,21 +43,11 @@ func (s *WindServerBase) Register() {
 func (s *WindServerBase) StartService() {
 	// 到etcd中注册服务器信息
 	// 启动消息处理线程
-	go s.handleRequestQueue()
+
 }
 
 // 退出服务器
 func (s *WindServerBase) ExitService() {
 
 }
-
-func (s *WindServerBase) handleRequestQueue() {
-	for s.serverExited {
-		// 这里要确保 先调用的先发送
-		for request := range s.requestChannel {
-
-		}
-	}
-}
-
 

@@ -3,6 +3,7 @@ package engine
 type RequestMessage struct{
 	playerId 		string
 	serverType 		int
+	sid 			string
 	command  		string
 	data            []byte		// protobuf binary
 }
