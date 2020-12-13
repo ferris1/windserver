@@ -1,10 +1,16 @@
 package engine
 
-import "github.com/ferris1/windserver/dataManager"
+import (
+	"encoding/json"
+	"github.com/ferris1/windserver/dataManager"
+)
 
 type WindServerBase struct {
+	serverIp				string
+	serverPort				int
 	serverName 				string
 	serverId   				string
+	intId					int
 	serverType 				int
 	connectCount			int
 	totalConnectCount		int
@@ -49,5 +55,18 @@ func (s *WindServerBase) StartService() {
 // 退出服务器
 func (s *WindServerBase) ExitService() {
 
+}
+
+func (s *WindServerBase) GetReportInfo() string {
+	var info map[string]string
+	info = make(map[string]string)
+	info["Ip"] = s.serverIp
+	info["Port"] = string(rune(s.serverPort))
+	info["IntId"] = string(rune(s.intId))
+	res, err := json.Marshal(info)
+	if err != nil {
+		return "{}"
+	}
+	return string(res)
 }
 
