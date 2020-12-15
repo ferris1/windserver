@@ -1,0 +1,9 @@
+FROM redis:5.0.5-buster
+COPY redis.conf /etc/redis/redis.conf
+RUN mkdir -p /var/log/redis /var/lib/redis && chown -R redis:redis /var/log/redis /var/lib/redis
+# CMD [ "redis-server", "/etc/redis/redis.conf" ]
+RUN echo Asia/Shanghai > /etc/timezone && dpkg-reconfigure --frontend noninteractive tzdata \
+  && mkdir /home/cores/ \
+  && chmod 777 /home/cores
+
+# EXPOSE 7000
