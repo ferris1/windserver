@@ -61,6 +61,9 @@ build_image()
 
 
 case $1 in
+  'build')
+    build_image
+  ;;
 	'create')
 		create_service
 	;;
