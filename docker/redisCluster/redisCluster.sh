@@ -3,8 +3,8 @@
 LOCAL_IP=$2
 
 # 这里写死
-SERVERNAME="lx33"
-IMAGESNAME="lx33"
+SERVERNAME="windserver"
+IMAGESNAME="windserver"
 
 SERVER_PUBLIC_NAME="redis"
 
@@ -53,6 +53,12 @@ remove_service()
 	echo "---------- remove $SERVER_PUBLIC_NAME"
 	docker rm -v $(docker ps -a -q -f name=$SERVERNAME-redis)
 }
+
+build_image()
+{
+  docker build -t ${IMAGESNAME}_redis_cluster .
+}
+
 
 case $1 in
 	'create')
