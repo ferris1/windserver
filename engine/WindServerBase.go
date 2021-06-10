@@ -2,7 +2,6 @@ package engine
 
 import (
 	"encoding/json"
-	"github.com/ferris1/windserver/dataManager"
 )
 
 type WindServerBase struct {
@@ -23,9 +22,6 @@ type WindServerBase struct {
 	serverGroupMgr 			ServerGroupManager
 	// 客戶端连接管理
 	connMgr					ConnManager
-	// 消息中间件
-	nsqClient   			NsqClient
-	RedisClient 			dataManager.WindServerRedisClient
 }
 
 //启动之前的设置
@@ -34,9 +30,6 @@ func (s *WindServerBase) SetUp() {
 	// 连接消息中间件,报告服务器压力
 	// 数据初始化
 	s.totalConnectCount = SERVERMAXCONNECT
-	// 引擎层可能不需要redis的功能，不过已经接入的话，就先放着
-	s.RedisClient = dataManager.WindServerRedisClient{}
-	s.RedisClient.ClientInit(RedisClusterConf,"")
 }
 
 // RPC框架  这个实现上好像比较麻烦
@@ -49,12 +42,19 @@ func (s *WindServerBase) Register() {
 func (s *WindServerBase) StartService() {
 	// 到etcd中注册服务器信息
 	// 启动消息处理线程
+	s.serverGroupMgr.registerServerEtcd(s.serverId, s.serverType, EtcdTTl)
 
 }
 
 // 退出服务器
 func (s *WindServerBase) ExitService() {
 
+}
+
+func (s *WindServerBase) StartUp() {
+	s.SetUp()
+	s.Register()
+	s.StartService()
 }
 
 func (s *WindServerBase) GetReportInfo() string {

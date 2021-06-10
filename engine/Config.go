@@ -15,8 +15,6 @@ var (
 		Endpoints:   []string{"localhost:2379", "localhost:22379", "localhost:32379"},
 		DialTimeout: 5 * time.Second,
 	}
-
-
 )
-
+const EtcdTTl = 30
 
