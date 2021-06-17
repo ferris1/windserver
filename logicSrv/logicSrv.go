@@ -8,7 +8,7 @@ type LogicSrv struct {
 	base *engine.WindServer
 }
 
-func  New(name string)  *LogicSrv {
+func  NewLogicSrv(name string)  *LogicSrv {
 	return &LogicSrv{base: engine.New(name)}
 }
 
@@ -36,14 +36,9 @@ func (s *LogicSrv) ExitService() {
 	println("logic server exit service....")
 }
 
-func (s *LogicSrv) StartUp() {
+func (s *LogicSrv) Run() {
 	s.SetUp()
 	s.Register()
 	s.StartService()
 }
 
-func main(){
-	var server *LogicSrv
-	server  = New("logic")
-	server.StartUp()
-}

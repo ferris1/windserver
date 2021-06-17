@@ -2,7 +2,6 @@
 
 LOCAL_IP=$2
 
-# 这里写死
 SERVERNAME="windserver"
 IMAGESNAME="windserver"
 

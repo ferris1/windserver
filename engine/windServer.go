@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/ferris1/windserver/engine/until/signals"
 )
 
 type WindServer struct {
@@ -49,11 +51,9 @@ func (s *WindServer) StartService() {
 	// s.serverGroupMgr.registerServerEtcd(s.serverId, s.serverType, EtcdTTl)
 	// 主线程处理循环
 	println("wind server base running... ")
-	for {
-		if s.serverExited {
-			break
-		}
-	}
+	ctx := signals.NewSigKillContext()
+	go s.ProcessMessageQueue(ctx)
+
 }
 
 // 退出服务器
@@ -61,7 +61,7 @@ func (s *WindServer) ExitService() {
 	println("wind server base has ExitService....")
 }
 
-func (s *WindServer) StartUp() {
+func (s *WindServer) Run() {
 	s.SetUp()
 	s.Register()
 	s.StartService()
@@ -80,6 +80,16 @@ func (s *WindServer) GetReportInfo() string {
 	return string(res)
 }
 
+func (s *WindServer) ProcessMessageQueue(ctx context.Context)  {
+	for !s.serverExited {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+
+		}
+	}
+}
 
 // func main() {
 // 	var server WindServer
