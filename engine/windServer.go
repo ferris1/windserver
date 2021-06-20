@@ -21,22 +21,22 @@ type WindServer interface {
 // 3.配合组件server_group_manager和switcher_client，建立服务器组的信息同步、数据收发和负载监控
 // 4.消息注册和向上转发等
 type windServer struct {
-	serverIp          string
-	serverPort        int
-	serverName        string
-	serverId          string
-	intId             int
-	serverType        int
-	connectCount      int
-	totalConnectCount int
-	serverExited      bool
-	requestQueue      chan requestData
+	serverIp          	string
+	serverPort        	int
+	serverName        	string
+	serverId          	string
+	intId             	int
+	serverType        	int
+	connectCount      	int
+	totalConnectCount 	int
+	serverExited      	bool
+	requestQueue      	chan requestData
 	// 消息回调函数注册 应该是个回调函数
-	commandMap map[string]string
+	commandMap 			map[string]string
 	// 服务器组管理
-	serverGroupMgr ServerGroupManagerBasic
+	serverGroupMgr 		*ServerGroupManagerBasic
 	// 客戶端连接管理
-	connMgr ConnManager
+	connMgr 			*ConnManager
 }
 
 func NewWindServer(name string)  WindServer {
@@ -50,6 +50,8 @@ func (s *windServer) SetUp() {
 	// 数据初始化
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
+	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG)
+	s.serverGroupMgr.SetUp(s)
 	println("wind server base has SetUp....")
 }
 
@@ -82,12 +84,19 @@ func (s *windServer) Stop() {
 	println("wind server base has ExitService....")
 }
 
+func (s *windServer) GetServerId() string {
+	return s.serverId
+}
+
+func (s *windServer) GetServerType() int {
+	return s.serverType
+}
+
 func (s *windServer) GetReportInfo() string {
-	var info map[string]string
-	info = make(map[string]string)
-	info["Ip"] = s.serverIp
-	info["Port"] = string(rune(s.serverPort))
-	info["IntId"] = string(rune(s.intId))
+	var info = &ServerMetaInfo{}
+	info.ip = s.serverId
+	info.port = s.serverPort
+	info.intId = s.intId
 	res, err := json.Marshal(info)
 	if err != nil {
 		return "{}"

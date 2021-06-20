@@ -1,11 +1,5 @@
 package engine
 
-type EtcdConfig struct {
-	EtcdAddr			string
-	EtcdGroup 			string
-	UseGrpcProxy		bool
-}
-
 type ServerMetaInfo struct {
 	ip    				string
 	port 				int
