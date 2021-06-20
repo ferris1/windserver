@@ -13,10 +13,18 @@ type requestData struct {
 	Data          		*byte     // protobuf的二进制
 }
 
-type SERVERTYPE int32
+type ServerAlias = int
 
-const (
-	INVALID     	SERVERTYPE = 0
-	LOGIN      		SERVERTYPE = 2
-	LOGIC      		SERVERTYPE = 3
-)
+type serverType struct {
+	INVALID 	ServerAlias
+	LOGIN 		ServerAlias
+	LOGIC 		ServerAlias
+}
+
+// Enum for public use
+var SERVERTYPE = &serverType{
+	INVALID: 0,
+	LOGIN: 1,
+	LOGIC: 2,
+}
+

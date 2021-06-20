@@ -13,7 +13,8 @@ func  NewLogicSrv(name string)  *LogicSrv {
 }
 
 func (s *LogicSrv) SetUp() {
-	s.SetUp()
+	s.WindServer.SetUp()
+	s.AddWatchServers([]int{engine.SERVERTYPE.LOGIC})
 	println("server has SetUp....")
 }
 

@@ -71,7 +71,7 @@ func (sgm *ServerGroupManagerBasic) AddWatch(lst []int) {
 	}
 }
 
-func  (sgm *ServerGroupManagerBasic) RemoveAllWatch()  {
+func  (sgm *ServerGroupManagerBasic) CloseWatch()  {
 	err := sgm.etcdClient.Watcher.Close()
 	if err!= nil {
 		println("watcher close error", err)
@@ -174,4 +174,25 @@ func (sgm *ServerGroupManagerBasic) onServerDelete(sid string) {
 
 func (sgm *ServerGroupManagerBasic) onServerAdd(sid string) {
 
+}
+
+func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int) bool {
+	srvs,has := sgm.onlineServers[serverType]
+	if has {
+		_,in := srvs[sid]
+		if in {
+			return true
+		}
+	}
+	return false
+}
+
+func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
+	var serverType = sgm.serverInst.GetServerType()
+	var serverId = sgm.serverInst.GetServerId()
+	nodeKey := "/" + sgm.etcdGroup + "/servers/" + string(rune(serverType)) + "/" + serverId
+	_,err := sgm.etcdClient.KV.Delete(ctx,nodeKey)
+	if err!=nil {
+		println("error in clean Etcd")
+	}
 }

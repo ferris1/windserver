@@ -13,6 +13,7 @@ type WindServer interface {
 	StartService()
 	Run()
 	Stop()
+	AddWatchServers(lst []int)
 }
 
 // 引擎主要功能：
@@ -33,10 +34,9 @@ type windServer struct {
 	requestQueue      	chan requestData
 	// 消息回调函数注册 应该是个回调函数
 	commandMap 			map[string]string
-	// 服务器组管理
-	serverGroupMgr 		*ServerGroupManagerBasic
 	// 客戶端连接管理
 	connMgr 			*ConnManager
+	serverGroupMgr 		*ServerGroupManagerBasic
 }
 
 func NewWindServer(name string)  WindServer {
@@ -126,6 +126,10 @@ func (s *windServer) SendDataByMessageServer(pid string, sid string, serverType 
 
 func (s *windServer) GetCommandDestSid(pid string, serverType int, command string)  (string,bool) {
 	return "HAHA",true
+}
+
+func (s *windServer) AddWatchServers(lst []int) {
+	s.serverGroupMgr.AddWatch(lst)
 }
 
 // func main() {
