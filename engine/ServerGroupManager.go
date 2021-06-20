@@ -7,28 +7,54 @@ import (
 	"strings"
 )
 
-type ServerGroupManager struct {
-	etcdClient     *clientv3.Client
-	etcdLease      clientv3.Lease
-	leaseGrantResp *clientv3.LeaseGrantResponse
-	KV             clientv3.KV
-	serverGroup    string
-	serverInst     *WindServer
+type ServerGroupManagerBasic struct {
+	etcdAddr			string
+	etcdGroup			string
+	useGrpcProxy		bool
+	etcdClient     		*clientv3.Client
+	etcdLease      		clientv3.Lease
+	leaseGrantResp 		*clientv3.LeaseGrantResponse
+	serverInst     		*windServer
+
+	watchTypes			map[int]bool
+	watchServers        []int
+	etcdEvent			chan string
+	onlineServers		map[int][]ServerMetaInfo      // server
 }
 
-func (sgm *ServerGroupManager) init(serverInst *WindServer) {
+func NewServerGroupManagerBasic(config EtcdConfig) *ServerGroupManagerBasic{
+	return &ServerGroupManagerBasic{etcdAddr: config.EtcdAddr,
+		etcdGroup: config.EtcdGroup, useGrpcProxy: config.UseGrpcProxy}
+}
+
+func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 	client, err := clientv3.New(ETCDCONFIG)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	sgm.etcdClient = client
-	sgm.KV = clientv3.NewKV(sgm.etcdClient)
-	sgm.serverGroup = SERVEARGROUPNAME
 	sgm.serverInst = serverInst
 }
 
-func (sgm *ServerGroupManager) registerServerEtcd(serverId string, serverType int, etcdTTl int) {
+func (sgm *ServerGroupManagerBasic) StartService() {
+
+}
+
+func (sgm *ServerGroupManagerBasic) ProcessEtcdEvents() {
+	for !sgm.serverInst.serverExited {
+		select {
+		case e := <- sgm.etcdEvent:
+			fmt.Println("event:",e)
+		}
+	}
+}
+
+func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvents() {
+
+}
+
+func (sgm *ServerGroupManagerBasic) registerServerEtcd(serverId string, serverType int, etcdTTl int) {
 	sgm.etcdLease = clientv3.NewLease(sgm.etcdClient)
 	leaseGrantResp, err := sgm.etcdLease.Grant(context.TODO(), int64(etcdTTl))
 	if err != nil {
@@ -36,9 +62,9 @@ func (sgm *ServerGroupManager) registerServerEtcd(serverId string, serverType in
 		return
 	}
 	nodeKey := "/"
-	strings.Join([]string{nodeKey, sgm.serverGroup, "/servers/", string(rune(serverType)), "/", serverId}, "")
+	strings.Join([]string{nodeKey, sgm.etcdGroup, "/servers/", string(rune(serverType)), "/", serverId}, "")
 	info := sgm.serverInst.GetReportInfo()
-	_, err = sgm.KV.Put(context.TODO(), nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
+	_, err = sgm.etcdClient.Put(context.TODO(), nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
 	if err != nil {
 		fmt.Println(err)
 		return

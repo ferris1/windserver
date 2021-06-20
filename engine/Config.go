@@ -6,7 +6,7 @@ import (
 
 const RedisClusterIp = "127.0.0.1"
 
-const SERVEARGROUPNAME = "WindServer"
+const SERVEARGROUPNAME = "windServer"
 
 var (
 	ETCDCONFIG = clientv3.Config{
@@ -17,3 +17,5 @@ var (
 const EtcdTTl = 30
 
 const SERVERMAXCONNECT = 1000
+
+const REQUSETQUEUELEN = 100
