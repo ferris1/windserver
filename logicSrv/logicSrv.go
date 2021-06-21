@@ -1,20 +1,20 @@
 package main
 
 import (
-	"github.com/ferris1/windserver/engine"
+	"github.com/ferris1/windserver/windserver"
 )
 
 type LogicSrv struct {
-	engine.WindServer
+	windserver.WindServer
 }
 
 func  NewLogicSrv(name string)  *LogicSrv {
-	return &LogicSrv{engine.NewWindServer(name)}
+	return &LogicSrv{windserver.NewWindServer(name)}
 }
 
 func (s *LogicSrv) SetUp() {
 	s.WindServer.SetUp()
-	s.AddWatchServers([]int{engine.SERVERTYPE.LOGIC})
+	s.AddWatchServers([]int{windserver.SERVERTYPE.LOGIC})
 	println("server has SetUp....")
 }
 

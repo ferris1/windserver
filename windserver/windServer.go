@@ -1,9 +1,9 @@
-package engine
+package windserver
 
 import (
 	"context"
 	"encoding/json"
-	"github.com/ferris1/windserver/engine/until/signals"
+	"github.com/ferris1/windserver/windserver/until/signals"
 )
 
 type WindServer interface {
