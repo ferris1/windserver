@@ -40,7 +40,7 @@ type windServer struct {
 }
 
 func NewWindServer(name string)  WindServer {
-	return &windServer{serverName: name}
+	return &windServer{serverName: name, serverId: "12345678", serverType: 1}
 }
 
 //启动之前的设置
@@ -50,7 +50,7 @@ func (s *windServer) SetUp() {
 	// 数据初始化
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
-	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG)
+	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG, "WindServer")
 	s.serverGroupMgr.SetUp(s)
 	println("wind server base has SetUp....")
 }
@@ -67,10 +67,12 @@ func (s *windServer) StartService() {
 	// 启动消息处理线程
 	// s.serverGroupMgr.registerServerEtcd(s.serverId, s.serverType, EtcdTTl)
 	// 主线程处理循环
+
 	println("wind server base running... ")
 	ctx := signals.NewSigKillContext()
+	s.serverGroupMgr.StartService(ctx)
 	go s.ProcessMessageQueue(ctx)
-
+	<-ctx.Done()
 }
 
 func (s *windServer) Run() {
@@ -94,11 +96,12 @@ func (s *windServer) GetServerType() int {
 
 func (s *windServer) GetReportInfo() string {
 	var info = &ServerMetaInfo{}
-	info.ip = s.serverId
-	info.port = s.serverPort
-	info.intId = s.intId
+	info.Ip = s.serverId
+	info.Port = s.serverPort
+	info.IntId = s.intId
 	res, err := json.Marshal(info)
 	if err != nil {
+		println("GetReportInfo.err:",err)
 		return "{}"
 	}
 	return string(res)

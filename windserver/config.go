@@ -10,7 +10,7 @@ const SERVEARGROUPNAME = "windServer"
 
 var (
 	ETCDCONFIG = clientv3.Config{
-		Endpoints: []string{"localhost:2379", "localhost:22379", "localhost:32379"},
+		Endpoints: []string{"192.168.0.106:2379", "192.168.0.106:2479", "192.168.0.106:2579"},
 	}
 )
 

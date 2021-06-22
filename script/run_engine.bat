@@ -1,2 +1,2 @@
-go run ..\logicSrv\main.go
+go run ..\logicSrv\logicSrv.go
 pause

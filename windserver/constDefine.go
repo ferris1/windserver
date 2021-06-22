@@ -1,9 +1,9 @@
 package windserver
 
 type ServerMetaInfo struct {
-	ip    				string
-	port 				int
-	intId				int
+	Ip    string
+	Port  int
+	IntId int
 }
 
 type requestData struct {
@@ -27,4 +27,5 @@ var SERVERTYPE = &serverType{
 	LOGIN: 1,
 	LOGIC: 2,
 }
+
 

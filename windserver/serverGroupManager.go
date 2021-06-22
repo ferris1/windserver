@@ -3,9 +3,8 @@ package windserver
 import (
 	"context"
 	"encoding/json"
-	mvccpb2 "github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/coreos/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/clientv3"
-	"go.etcd.io/etcd/mvcc/mvccpb"
 	"strconv"
 	"strings"
 )
@@ -27,8 +26,8 @@ type ServerGroupManagerBasic struct {
 	onlineServers		map[int]map[string]ServerMetaInfo      // server
 }
 
-func NewServerGroupManagerBasic(config clientv3.Config) *ServerGroupManagerBasic{
-	return &ServerGroupManagerBasic{etcdConfig: config}
+func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string) *ServerGroupManagerBasic{
+	return &ServerGroupManagerBasic{etcdConfig: config,etcdGroup: etcdGroup}
 }
 
 func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
@@ -37,29 +36,30 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 		println(err)
 		return
 	}
+	sgm.watchTypes = make(map[int]bool)
 	sgm.etcdClient = client
 	sgm.serverInst = serverInst
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
-	sgm.registerServerEtcd(sgm.serverInst.GetServerId(),sgm.serverInst.GetServerType(), EtcdTTl)
+	sgm.registerServerEtcd(ctx,sgm.serverInst.GetServerId(),sgm.serverInst.GetServerType(), EtcdTTl)
 }
 
-func (sgm *ServerGroupManagerBasic) registerServerEtcd(serverId string, serverType int, etcdTTl int) {
+func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
 	sgm.etcdLease = clientv3.NewLease(sgm.etcdClient)
-	leaseGrantResp, err := sgm.etcdLease.Grant(context.TODO(), int64(etcdTTl))
+	leaseGrantResp, err := sgm.etcdLease.Grant(ctx, int64(etcdTTl))
 	if err != nil {
 		println("update server info to etcd error:", err)
 		return
 	}
-	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + string(rune(serverType)) + "/" + serverId
+	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
 	info := sgm.serverInst.GetReportInfo()
-	_, err = sgm.etcdClient.KV.Put(context.TODO(), nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
+	_, err = sgm.etcdClient.KV.Put(ctx, nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
 	if err != nil {
 		println("update server info to etcd error:", err)
 		return
 	}
-	println("update info to etcd", serverType, serverId, info)
+	println("update info to etcd", serverType, serverId, info, nodeKey)
 }
 
 func (sgm *ServerGroupManagerBasic) AddWatch(lst []int) {
@@ -81,7 +81,7 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	var prefix = "/" + sgm.etcdGroup + "/servers/"
 	for serverType := range sgm.watchTypes {
 		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
-		var node = prefix + string(rune(serverType)) + "/"
+		var node = prefix + strconv.Itoa(serverType) + "/"
 		var watchChan = sgm.etcdClient.Watcher.Watch(ctx, node)
 		sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
 		go sgm.ProcessOneWatchChan(ctx, watchChan)
@@ -145,7 +145,7 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event *clientv3.Event) {
 	var sid = param[len(param)-1]
 	_,has := curServers[sid]
 	switch event.Type {
-	case mvccpb2.Event_EventType(mvccpb.PUT):
+	case mvccpb.PUT:
 		var value = event.Kv.Value
 		var dat map[string]interface{}
 		err := json.Unmarshal(value, &dat)
@@ -154,12 +154,12 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event *clientv3.Event) {
 			return
 		}
 		var info = ServerMetaInfo{}
-		info.ip = dat["ip"].(string)
-		info.port = dat["port"].(int)
-		info.intId = dat["intId"].(int)
+		info.Ip = dat["Ip"].(string)
+		info.Port = dat["Port"].(int)
+		info.IntId = dat["IntId"].(int)
 		curServers[sid] = info
 		sgm.onServerAdd(sid)
-	case mvccpb2.Event_EventType(mvccpb.DELETE):
+	case mvccpb.DELETE:
 		if has {
 			delete(curServers,sid)
 			sgm.onServerDelete(sid)
@@ -189,7 +189,7 @@ func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int
 func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
 	var serverType = sgm.serverInst.GetServerType()
 	var serverId = sgm.serverInst.GetServerId()
-	nodeKey := "/" + sgm.etcdGroup + "/servers/" + string(rune(serverType)) + "/" + serverId
+	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
 	_,err := sgm.etcdClient.KV.Delete(ctx,nodeKey)
 	if err!=nil {
 		println("error in clean Etcd")
