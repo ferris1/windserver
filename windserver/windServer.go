@@ -3,7 +3,11 @@ package windserver
 import (
 	"context"
 	"encoding/json"
-	"github.com/ferris1/windserver/windserver/until/signals"
+	"github.com/ferris1/windserver/windserver/utils/netUtils"
+	"github.com/ferris1/windserver/windserver/utils/signals"
+	"github.com/google/uuid"
+	"os"
+	"strconv"
 )
 
 type WindServer interface {
@@ -40,7 +44,9 @@ type windServer struct {
 }
 
 func NewWindServer(name string)  WindServer {
-	return &windServer{serverName: name, serverId: "12345678", serverType: 1}
+	s := &windServer{serverName: name, serverType: 1}
+	s.serverId = uuid.NewString()
+	return s
 }
 
 //启动之前的设置
@@ -48,6 +54,16 @@ func (s *windServer) SetUp() {
 	// 注册服务器信息,监听服务,启动心跳
 	// 连接消息中间件,报告服务器压力
 	// 数据初始化
+	ip,err := netUtils.GetLocalServerIp()
+	if err != nil {
+		println("get local ip error:",err.Error())
+	}
+	s.serverIp = ip
+	if len(os.Args) < 2 {
+		println("err in args len < 2")
+	}
+	s.serverPort, _ = strconv.Atoi(os.Args[1])
+	println("serverip:",s.serverIp,"serverPort:",s.serverPort)
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
 	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG, "WindServer")
@@ -96,7 +112,7 @@ func (s *windServer) GetServerType() int {
 
 func (s *windServer) GetReportInfo() string {
 	var info = &ServerMetaInfo{}
-	info.Ip = s.serverId
+	info.Ip = s.serverIp
 	info.Port = s.serverPort
 	info.IntId = s.intId
 	res, err := json.Marshal(info)
@@ -134,8 +150,3 @@ func (s *windServer) GetCommandDestSid(pid string, serverType int, command strin
 func (s *windServer) AddWatchServers(lst []int) {
 	s.serverGroupMgr.AddWatch(lst)
 }
-
-// func main() {
-// 	var server windServer
-// 	server.StartUp()
-// }
