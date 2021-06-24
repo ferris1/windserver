@@ -44,7 +44,7 @@ type windServer struct {
 }
 
 func NewWindServer(name string)  WindServer {
-	s := &windServer{serverName: name, serverType: 1}
+	s := &windServer{serverName: name, serverType: SERVERTYPE.GetServerTypeByName(name)}
 	s.serverId = uuid.NewString()
 	return s
 }

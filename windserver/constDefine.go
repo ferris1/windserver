@@ -16,9 +16,9 @@ type requestData struct {
 type ServerAlias = int
 
 type serverType struct {
-	INVALID 	ServerAlias
-	LOGIN 		ServerAlias
-	LOGIC 		ServerAlias
+	INVALID 	ServerAlias		`name:"INVALID"`
+	LOGIN 		ServerAlias		`name:"LOGIN"`
+	LOGIC 		ServerAlias		`name:"LOGIC"`
 }
 
 // Enum for public use
@@ -27,5 +27,18 @@ var SERVERTYPE = &serverType{
 	LOGIN: 1,
 	LOGIC: 2,
 }
+
+func (st *serverType) GetServerTypeByName(name string) ServerAlias {
+	switch name {
+	case "loginSrv":
+		return st.LOGIN
+	case "logicSrv":
+		return st.LOGIC
+	default:
+		return st.INVALID
+	}
+}
+
+
 
 

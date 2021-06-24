@@ -2,7 +2,7 @@ package main
 
 func main() {
 	var server *LogicSrv
-	server = NewLogicSrv("logic")
+	server = NewLogicSrv("logicSrv")
 	server.Run()
 	defer server.Stop()
 }

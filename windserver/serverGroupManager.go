@@ -37,12 +37,14 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 		return
 	}
 	sgm.watchTypes = make(map[int]bool)
+	sgm.onlineServers = make(map[int]map[string]ServerMetaInfo)
 	sgm.etcdClient = client
 	sgm.serverInst = serverInst
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
 	sgm.registerServerEtcd(ctx,sgm.serverInst.GetServerId(),sgm.serverInst.GetServerType(), EtcdTTl)
+	sgm.WatchServers(ctx)
 }
 
 func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
@@ -82,6 +84,8 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	for serverType := range sgm.watchTypes {
 		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
 		var node = prefix + strconv.Itoa(serverType) + "/"
+		var s, _ = sgm.etcdClient.KV.Get(ctx,node)
+		println("watch server prefix:",node)
 		var watchChan = sgm.etcdClient.Watcher.Watch(ctx, node)
 		sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
 		go sgm.ProcessOneWatchChan(ctx, watchChan)
@@ -91,14 +95,17 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 
 func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
 	for !sgm.serverInst.serverExited {
+		println("watch chan:")
 		select {
 		case <-ctx.Done():
 				return
 		case watchResp := <-watchRespChan:
+			println("watchResp")
 			for _,event := range watchResp.Events {
 				sgm.etcdEvent <- event
 			}
 		}
+
 	}
 }
 
@@ -168,11 +175,11 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event *clientv3.Event) {
 }
 
 func (sgm *ServerGroupManagerBasic) onServerDelete(sid string) {
-
+	println("onServerDelete:",sid)
 }
 
 func (sgm *ServerGroupManagerBasic) onServerAdd(sid string) {
-
+	println("onServerAdd:",sid)
 }
 
 func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int) bool {
