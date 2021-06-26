@@ -16,6 +16,5 @@ func NewSigKillContext() context.Context {
 		<-c
 		cancel()
 	}()
-
 	return ctx
 }

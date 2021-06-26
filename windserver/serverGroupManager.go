@@ -84,7 +84,6 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	for serverType := range sgm.watchTypes {
 		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
 		var node = prefix + strconv.Itoa(serverType) + "/"
-		var s, _ = sgm.etcdClient.KV.Get(ctx,node)
 		println("watch server prefix:",node)
 		var watchChan = sgm.etcdClient.Watcher.Watch(ctx, node)
 		sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
@@ -102,10 +101,10 @@ func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, wa
 		case watchResp := <-watchRespChan:
 			println("watchResp")
 			for _,event := range watchResp.Events {
+				println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
 				sgm.etcdEvent <- event
 			}
 		}
-
 	}
 }
 
