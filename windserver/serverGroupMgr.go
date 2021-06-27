@@ -11,14 +11,14 @@ import (
 
 
 type ServerGroupManagerBasic struct {
-	etcdAddr			string
-	etcdGroup			string
-	useGrpcProxy		bool
-	etcdConfig 			clientv3.Config
-	etcdClient     		*clientv3.Client
-	etcdLease      		clientv3.Lease
-	leaseGrantResp 		*clientv3.LeaseGrantResponse
-	serverInst     		*windServer
+	etcdAddr       string
+	etcdGroup      string
+	useGrpcProxy   bool
+	etcdConfig     clientv3.Config
+	etcdClient     *clientv3.Client
+	etcdLease      clientv3.Lease
+	leaseGrantResp *clientv3.LeaseGrantResponse
+	srv            *windServer
 
 	etcdEvent 			chan *clientv3.Event
 	watchTypes			map[int]bool
@@ -39,11 +39,11 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 	sgm.watchTypes = make(map[int]bool)
 	sgm.onlineServers = make(map[int]map[string]ServerMetaInfo)
 	sgm.etcdClient = client
-	sgm.serverInst = serverInst
+	sgm.srv = serverInst
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
-	sgm.registerServerEtcd(ctx,sgm.serverInst.GetServerId(),sgm.serverInst.GetServerType(), EtcdTTl)
+	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), EtcdTTl)
 	sgm.WatchServers(ctx)
 }
 
@@ -55,7 +55,7 @@ func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serve
 		return
 	}
 	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
-	info := sgm.serverInst.GetReportInfo()
+	info := sgm.srv.GetReportInfo()
 	_, err = sgm.etcdClient.KV.Put(ctx, nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
 	if err != nil {
 		println("update server info to etcd error:", err)
@@ -93,7 +93,7 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 }
 
 func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
-	for !sgm.serverInst.serverExited {
+	for !sgm.srv.serverExited {
 		println("watch chan:")
 		select {
 		case <-ctx.Done():
@@ -127,7 +127,7 @@ func  (sgm *ServerGroupManagerBasic) UpdateServersByType(serverType int)  {
 }
 
 func (sgm *ServerGroupManagerBasic) ProcessEtcdEvents(ctx context.Context) {
-	for !sgm.serverInst.serverExited {
+	for !sgm.srv.serverExited {
 		select {
 		case <-ctx.Done():
 			return
@@ -193,8 +193,8 @@ func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int
 }
 
 func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
-	var serverType = sgm.serverInst.GetServerType()
-	var serverId = sgm.serverInst.GetServerId()
+	var serverType = sgm.srv.GetServerType()
+	var serverId = sgm.srv.GetServerId()
 	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
 	_,err := sgm.etcdClient.KV.Delete(ctx,nodeKey)
 	if err!=nil {
