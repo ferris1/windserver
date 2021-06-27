@@ -17,5 +17,7 @@ var (
 const EtcdTTl = 30
 
 const SERVERMAXCONNECT = 1000
-
 const REQUSETQUEUELEN = 100
+
+const NETUSEMUlTICORE = true
+const NETREUSEPORT = true
