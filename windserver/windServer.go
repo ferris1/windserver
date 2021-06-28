@@ -89,6 +89,7 @@ func (s *windServer) StartService() {
 	s.serverGroupMgr.StartService(ctx)
 	go s.ProcessMessageQueue(ctx)
 	<-ctx.Done()
+	println("server end")
 }
 
 func (s *windServer) Run() {

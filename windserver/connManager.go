@@ -37,9 +37,8 @@ func (cm *ConnManager) OnDisConnect(peerId int)  {
 }
 
 func (cm *ConnManager) OnData(peerId int, frame []byte)  {
-	// Echo asynchronously.
-	data := append([]byte{}, frame...)
-	conn = cm
+
+
 }
 
 

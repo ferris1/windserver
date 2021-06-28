@@ -3,6 +3,7 @@ package windserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/clientv3"
 	"strconv"
@@ -43,8 +44,8 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
-	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), EtcdTTl)
 	sgm.WatchServers(ctx)
+	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), EtcdTTl)
 }
 
 func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
@@ -83,27 +84,54 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	var prefix = "/" + sgm.etcdGroup + "/servers/"
 	for serverType := range sgm.watchTypes {
 		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
+		serverType := serverType
 		var node = prefix + strconv.Itoa(serverType) + "/"
-		println("watch server prefix:",node)
-		var watchChan = sgm.etcdClient.Watcher.Watch(ctx, node)
-		sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
-		go sgm.ProcessOneWatchChan(ctx, watchChan)
+		go func() {
+			//println("watch server prefix:", node)
+			//res, _ := sgm.etcdClient.KV.Get(ctx, node, clientv3.WithPrefix())
+			//for _, x := range res.Kvs {
+			//	println("node:", node, string(x.Key), string(x.Value))
+			//}
+			//watch
+			println(" node ",node, " watch running")
+			watchRespChan := sgm.etcdClient.Watch(ctx, node)
+			for resp := range watchRespChan {
+				for _, event := range resp.Events {
+					println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
+				}
+			}
+			println(" node ",node, " watch end")
+		}()
+		if resp, err := sgm.etcdClient.Put(ctx, node + "foo", "test"); err != nil {
+			fmt.Println("err:",err)
+		} else {
+			fmt.Println("resp",resp)
+		}
+		println("watch ",node)
+		//var watchChan =
+		//sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
+		//go sgm.ProcessOneWatchChan(ctx, watchChan)
 	}
 	sgm.UpdateWatchServers()
 }
 
 func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
-	for !sgm.srv.serverExited {
-		println("watch chan:")
-		select {
-		case <-ctx.Done():
-				return
-		case watchResp := <-watchRespChan:
-			println("watchResp")
-			for _,event := range watchResp.Events {
-				println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
-				sgm.etcdEvent <- event
-			}
+	//for !sgm.srv.serverExited {
+	//	println("watch chan:")
+	//	select {
+	//	case <-ctx.Done():
+	//			return
+	//	case watchResp := <-watchRespChan:
+	//		println("watchResp")
+	//		for _,event := range watchResp.Events {
+	//			println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
+	//			sgm.etcdEvent <- event
+	//		}
+	//	}
+	//}
+	for resp := range watchRespChan {
+		for _, event := range resp.Events {
+			println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
 		}
 	}
 }
