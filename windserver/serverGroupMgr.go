@@ -3,7 +3,6 @@ package windserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/clientv3"
 	"strconv"
@@ -17,6 +16,8 @@ type ServerGroupManagerBasic struct {
 	useGrpcProxy   bool
 	etcdConfig     clientv3.Config
 	etcdClient     *clientv3.Client
+	kv 				clientv3.KV
+	watcher 		clientv3.Watcher
 	etcdLease      clientv3.Lease
 	leaseGrantResp *clientv3.LeaseGrantResponse
 	srv            *windServer
@@ -41,6 +42,9 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 	sgm.onlineServers = make(map[int]map[string]ServerMetaInfo)
 	sgm.etcdClient = client
 	sgm.srv = serverInst
+	sgm.etcdEvent = make(chan *clientv3.Event)
+	sgm.kv = clientv3.NewKV(client)
+	sgm.watcher = clientv3.NewWatcher(client)
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
@@ -57,7 +61,7 @@ func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serve
 	}
 	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
 	info := sgm.srv.GetReportInfo()
-	_, err = sgm.etcdClient.KV.Put(ctx, nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
+	_, err = sgm.kv.Put(ctx, nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
 	if err != nil {
 		println("update server info to etcd error:", err)
 		return
@@ -74,7 +78,7 @@ func (sgm *ServerGroupManagerBasic) AddWatch(lst []int) {
 }
 
 func  (sgm *ServerGroupManagerBasic) CloseWatch()  {
-	err := sgm.etcdClient.Watcher.Close()
+	err := sgm.watcher.Close()
 	if err!= nil {
 		println("watcher close error", err)
 	}
@@ -86,54 +90,32 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
 		serverType := serverType
 		var node = prefix + strconv.Itoa(serverType) + "/"
-		go func() {
-			//println("watch server prefix:", node)
-			//res, _ := sgm.etcdClient.KV.Get(ctx, node, clientv3.WithPrefix())
-			//for _, x := range res.Kvs {
-			//	println("node:", node, string(x.Key), string(x.Value))
-			//}
-			//watch
-			println(" node ",node, " watch running")
-			watchRespChan := sgm.etcdClient.Watch(ctx, node)
-			for resp := range watchRespChan {
-				for _, event := range resp.Events {
-					println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
-				}
-			}
-			println(" node ",node, " watch end")
-		}()
-		if resp, err := sgm.etcdClient.Put(ctx, node + "foo", "test"); err != nil {
-			fmt.Println("err:",err)
-		} else {
-			fmt.Println("resp",resp)
-		}
-		println("watch ",node)
-		//var watchChan =
-		//sgm.etcdWatch = append(sgm.etcdWatch, watchChan)
-		//go sgm.ProcessOneWatchChan(ctx, watchChan)
+		watchRespChan := sgm.watcher.Watch(ctx, node,clientv3.WithPrefix())
+		go sgm.ProcessOneWatchChan(ctx, watchRespChan)
 	}
 	sgm.UpdateWatchServers()
 }
 
 func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
-	//for !sgm.srv.serverExited {
-	//	println("watch chan:")
-	//	select {
-	//	case <-ctx.Done():
-	//			return
-	//	case watchResp := <-watchRespChan:
-	//		println("watchResp")
-	//		for _,event := range watchResp.Events {
-	//			println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
-	//			sgm.etcdEvent <- event
-	//		}
-	//	}
-	//}
-	for resp := range watchRespChan {
-		for _, event := range resp.Events {
-			println("the event ", event.Type, event.Kv.Key, event.Kv.Value)
+	for !sgm.srv.serverExited {
+		select {
+		case <-ctx.Done():
+				return
+		case watchResp := <-watchRespChan:
+			for _,event := range watchResp.Events {
+				println("the event ", string(event.Type), string(event.Kv.Key), string(event.Kv.Value))
+				var param = strings.Split(string(event.Kv.Key), "/")
+				var sid = param[len(param)-1]
+				switch event.Type {
+				case mvccpb.PUT:
+					sgm.onServerAdd(sid)
+				case mvccpb.DELETE:
+					sgm.onServerDelete(sid)
+				}
+			}
 		}
 	}
+
 }
 
 func  (sgm *ServerGroupManagerBasic) UpdateWatchServers()  {
@@ -224,7 +206,7 @@ func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
 	var serverType = sgm.srv.GetServerType()
 	var serverId = sgm.srv.GetServerId()
 	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
-	_,err := sgm.etcdClient.KV.Delete(ctx,nodeKey)
+	_,err := sgm.kv.Delete(ctx, nodeKey)
 	if err!=nil {
 		println("error in clean Etcd")
 	}

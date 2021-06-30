@@ -67,7 +67,7 @@ func main() {
 
 	ctx, cancelFunc := context.WithCancel(context.TODO())
 	//5秒钟后取消
-	time.AfterFunc(5 * time.Second, func() {
+	time.AfterFunc(10 * time.Second, func() {
 		cancelFunc()
 	})
 	//这里ctx感知到cancel则会关闭watcher
