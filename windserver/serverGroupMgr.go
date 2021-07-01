@@ -3,6 +3,7 @@ package windserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/clientv3"
 	"strconv"
@@ -11,25 +12,25 @@ import (
 
 
 type ServerGroupManagerBasic struct {
-	etcdAddr       string
-	etcdGroup      string
-	useGrpcProxy   bool
-	etcdConfig     clientv3.Config
-	etcdClient     *clientv3.Client
-	kv 				clientv3.KV
-	watcher 		clientv3.Watcher
-	etcdLease      clientv3.Lease
-	leaseGrantResp *clientv3.LeaseGrantResponse
-	srv            *windServer
-
-	etcdEvent 			chan *clientv3.Event
+	etcdAddr       		string
+	etcdGroup      		string
+	useGrpcProxy   		bool
+	etcdConfig     		clientv3.Config
+	etcdClient     		*clientv3.Client
+	kv 					clientv3.KV
+	watcher 			clientv3.Watcher
+	etcdLease      		clientv3.Lease
+	leaseGrantResp 		*clientv3.LeaseGrantResponse
+	srv            		*windServer
+	etcdLeaseTTl 		int
+	etcdEvent 			chan clientv3.Event
 	watchTypes			map[int]bool
 	etcdWatch        	[]clientv3.WatchChan
 	onlineServers		map[int]map[string]ServerMetaInfo      // server
 }
 
-func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string) *ServerGroupManagerBasic{
-	return &ServerGroupManagerBasic{etcdConfig: config,etcdGroup: etcdGroup}
+func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string, etcdTTl int) *ServerGroupManagerBasic{
+	return &ServerGroupManagerBasic{etcdConfig: config,etcdGroup: etcdGroup, etcdLeaseTTl: etcdTTl}
 }
 
 func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
@@ -38,30 +39,33 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
 		println(err)
 		return
 	}
+	sgm.etcdLease = nil
 	sgm.watchTypes = make(map[int]bool)
 	sgm.onlineServers = make(map[int]map[string]ServerMetaInfo)
 	sgm.etcdClient = client
 	sgm.srv = serverInst
-	sgm.etcdEvent = make(chan *clientv3.Event)
+	sgm.etcdEvent = make(chan clientv3.Event)
 	sgm.kv = clientv3.NewKV(client)
 	sgm.watcher = clientv3.NewWatcher(client)
 }
 
 func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
+	go sgm.ProcessEtcdEvents(ctx)
 	sgm.WatchServers(ctx)
-	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), EtcdTTl)
+	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), sgm.etcdLeaseTTl)
 }
 
 func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
 	sgm.etcdLease = clientv3.NewLease(sgm.etcdClient)
-	leaseGrantResp, err := sgm.etcdLease.Grant(ctx, int64(etcdTTl))
+	var err error
+	sgm.leaseGrantResp, err = sgm.etcdLease.Grant(ctx, int64(etcdTTl))
 	if err != nil {
 		println("update server info to etcd error:", err)
 		return
 	}
 	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
 	info := sgm.srv.GetReportInfo()
-	_, err = sgm.kv.Put(ctx, nodeKey, info, clientv3.WithLease(leaseGrantResp.ID))
+	_, err = sgm.kv.Put(ctx, nodeKey, info, clientv3.WithLease(sgm.leaseGrantResp.ID))
 	if err != nil {
 		println("update server info to etcd error:", err)
 		return
@@ -104,21 +108,14 @@ func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, wa
 		case watchResp := <-watchRespChan:
 			for _,event := range watchResp.Events {
 				println("the event ", string(event.Type), string(event.Kv.Key), string(event.Kv.Value))
-				var param = strings.Split(string(event.Kv.Key), "/")
-				var sid = param[len(param)-1]
-				switch event.Type {
-				case mvccpb.PUT:
-					sgm.onServerAdd(sid)
-				case mvccpb.DELETE:
-					sgm.onServerDelete(sid)
-				}
+				sgm.etcdEvent <- *event
 			}
 		}
 	}
-
 }
 
 func  (sgm *ServerGroupManagerBasic) UpdateWatchServers()  {
+	println("Update Watch Servers")
 	for serverType := range sgm.watchTypes {
 		sgm.UpdateServersByType(serverType)
 	}
@@ -131,7 +128,7 @@ func  (sgm *ServerGroupManagerBasic) UpdateServersByType(serverType int)  {
 		if err != nil {
 			println("UpdateServersByType.sid:",sid," info:",jsonInfo)
 		} else {
-			println()
+			println("err when update server")
 		}
 	}
 }
@@ -147,7 +144,7 @@ func (sgm *ServerGroupManagerBasic) ProcessEtcdEvents(ctx context.Context) {
 	}
 }
 
-func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event *clientv3.Event) {
+func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event clientv3.Event) {
 	var param = strings.Split(string(event.Kv.Key), "/")
 	serverType, err := strconv.Atoi(param[len(param) -2])
 	if err != nil {
@@ -171,10 +168,10 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event *clientv3.Event) {
 		}
 		var info = ServerMetaInfo{}
 		info.Ip = dat["Ip"].(string)
-		info.Port = dat["Port"].(int)
-		info.IntId = dat["IntId"].(int)
+		info.Port = int(dat["Port"].(float64))
+		info.IntId = int(dat["IntId"].(float64))
 		curServers[sid] = info
-		sgm.onServerAdd(sid)
+		sgm.onServerAdd(sid, string(value))
 	case mvccpb.DELETE:
 		if has {
 			delete(curServers,sid)
@@ -187,8 +184,8 @@ func (sgm *ServerGroupManagerBasic) onServerDelete(sid string) {
 	println("onServerDelete:",sid)
 }
 
-func (sgm *ServerGroupManagerBasic) onServerAdd(sid string) {
-	println("onServerAdd:",sid)
+func (sgm *ServerGroupManagerBasic) onServerAdd(sid string, info string) {
+	println("onServerAdd:",sid, " info:",info)
 }
 
 func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int) bool {
@@ -202,7 +199,7 @@ func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int
 	return false
 }
 
-func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
+func (sgm *ServerGroupManagerBasic) CleanEtcd(ctx context.Context) {
 	var serverType = sgm.srv.GetServerType()
 	var serverId = sgm.srv.GetServerId()
 	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
@@ -210,4 +207,23 @@ func (sgm *ServerGroupManagerBasic) cleanEtcd(ctx context.Context) {
 	if err!=nil {
 		println("error in clean Etcd")
 	}
+}
+
+func (sgm *ServerGroupManagerBasic) EtcdTick(ctx context.Context) {
+	if sgm.srv.serverExited  {
+		return
+	}
+	if sgm.etcdLease == nil || sgm.etcdLeaseTTl == 0 {
+		return
+	}
+	if keepRespChan, err := sgm.etcdLease.KeepAliveOnce(ctx, sgm.leaseGrantResp.ID); err != nil {
+		fmt.Println(err)
+		sgm.etcdLease = nil
+		return
+	} else {
+		if keepRespChan!=nil {
+			println("etcd Keep Alive success")
+		}
+	}
+
 }

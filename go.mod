@@ -3,12 +3,13 @@ module github.com/ferris1/windserver
 go 1.15
 
 replace (
-	github.com/coreos/bbolt => go.etcd.io/bbolt v1.3.6
+	github.com/coreos/bbolt v1.3.4 => go.etcd.io/bbolt v1.3.4
+	go.etcd.io/bbolt v1.3.4 => github.com/coreos/bbolt v1.3.4
 	google.golang.org/grpc => google.golang.org/grpc v1.26.0
 )
 
 require (
-	github.com/coreos/bbolt v0.0.0-00010101000000-000000000000 // indirect
+	github.com/coreos/bbolt v1.3.4 // indirect
 	github.com/coreos/etcd v3.3.25+incompatible
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
@@ -25,6 +26,7 @@ require (
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/panjf2000/gnet v1.4.5
 	github.com/prometheus/client_golang v1.11.0 // indirect
+	github.com/roylee0704/gron v0.0.0-20160621042432-e78485adab46
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect

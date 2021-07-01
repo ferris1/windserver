@@ -6,8 +6,10 @@ import (
 	"github.com/ferris1/windserver/windserver/utils/netUtils"
 	"github.com/ferris1/windserver/windserver/utils/signals"
 	"github.com/google/uuid"
+	"github.com/roylee0704/gron"
 	"os"
 	"strconv"
+	"time"
 )
 
 type WindServer interface {
@@ -41,6 +43,8 @@ type windServer struct {
 	// 客戶端连接管理
 	connMgr 			*ConnManager
 	serverGroupMgr 		*ServerGroupManagerBasic
+	intervalJob 		*gron.Cron
+	ctx                  context.Context
 }
 
 func NewWindServer(name string)  WindServer {
@@ -62,11 +66,13 @@ func (s *windServer) SetUp() {
 	if len(os.Args) < 2 {
 		println("err in args len < 2")
 	}
+	s.ctx = signals.NewSigKillContext()
 	s.serverPort, _ = strconv.Atoi(os.Args[1])
 	println("serverip:",s.serverIp,"serverPort:",s.serverPort)
+	s.intervalJob = gron.New()
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
-	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG, "WindServer")
+	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG, "WindServer", EtcdTTl)
 	s.serverGroupMgr.SetUp(s)
 	println("wind server base has SetUp....")
 }
@@ -75,6 +81,7 @@ func (s *windServer) SetUp() {
 // 事件注册:如网络事件注册
 func (s *windServer) Register() {
 	println("wind server base has Register....")
+	s.intervalJob.AddFunc(gron.Every((EtcdTTl/2)*time.Second), func() { s.serverGroupMgr.EtcdTick(s.ctx) })
 }
 
 // 启动服务器,一些服务线程将在这里启动,一些定时任务在这里驱动
@@ -85,10 +92,11 @@ func (s *windServer) StartService() {
 	// 主线程处理循环
 
 	println("wind server base running... ")
-	ctx := signals.NewSigKillContext()
-	s.serverGroupMgr.StartService(ctx)
-	go s.ProcessMessageQueue(ctx)
-	<-ctx.Done()
+
+	s.serverGroupMgr.StartService(s.ctx)
+	s.intervalJob.Start()
+	go s.ProcessMessageQueue(s.ctx)
+	<-s.ctx.Done()
 	println("server end")
 }
 

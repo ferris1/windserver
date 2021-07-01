@@ -14,7 +14,7 @@ var (
 	}
 )
 
-const EtcdTTl = 30
+const EtcdTTl = 15
 
 const SERVERMAXCONNECT = 1000
 const REQUSETQUEUELEN = 100
