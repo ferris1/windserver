@@ -82,6 +82,7 @@ func (s *windServer) SetUp() {
 func (s *windServer) Register() {
 	println("wind server base has Register....")
 	s.intervalJob.AddFunc(gron.Every((EtcdTTl/2)*time.Second), func() { s.serverGroupMgr.EtcdTick(s.ctx) })
+
 }
 
 // 启动服务器,一些服务线程将在这里启动,一些定时任务在这里驱动
@@ -92,10 +93,9 @@ func (s *windServer) StartService() {
 	// 主线程处理循环
 
 	println("wind server base running... ")
-
 	s.serverGroupMgr.StartService(s.ctx)
-	s.intervalJob.Start()
 	go s.ProcessMessageQueue(s.ctx)
+	s.intervalJob.Start()
 	<-s.ctx.Done()
 	println("server end")
 }

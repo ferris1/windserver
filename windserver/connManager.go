@@ -33,11 +33,10 @@ func (cm *ConnManager) OnConnect(peerId int, conn *gnet.Conn) {
 }
 
 func (cm *ConnManager) OnDisConnect(peerId int)  {
-
+	delete(cm.peerToClient, peerId)
 }
 
 func (cm *ConnManager) OnData(peerId int, frame []byte)  {
-
 
 }
 
