@@ -3,6 +3,7 @@ package windserver
 import (
 	"context"
 	"encoding/json"
+	"github.com/ferris1/windserver/windserver/discovery"
 	"github.com/ferris1/windserver/windserver/utils/netUtils"
 	"github.com/ferris1/windserver/windserver/utils/signals"
 	"github.com/google/uuid"
@@ -42,14 +43,14 @@ type windServer struct {
 	commandMap 			map[string]string
 	// 客戶端连接管理
 	connMgr 			*ConnManager
-	serverGroupMgr 		*ServerGroupManagerBasic
+	serverGroupMgr 		*discovery.ServerGroupManagerBasic
 	intervalJob 		*gron.Cron
 	ctx                  context.Context
 }
 
 func NewWindServer(name string)  WindServer {
 	s := &windServer{serverName: name, serverType: SERVERTYPE.GetServerTypeByName(name)}
-	s.serverId = uuid.NewString()
+	s.serverId = uuid.New().String()
 	return s
 }
 
@@ -72,7 +73,7 @@ func (s *windServer) SetUp() {
 	s.intervalJob = gron.New()
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
-	s.serverGroupMgr = NewServerGroupManagerBasic(ETCDCONFIG, "WindServer", EtcdTTl)
+	s.serverGroupMgr = discovery.NewServerGroupManagerBasic(ETCDCONFIG, "WindServer", EtcdTTl)
 	s.serverGroupMgr.SetUp(s)
 	println("wind server base has SetUp....")
 }

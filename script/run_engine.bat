@@ -1,2 +1,2 @@
-go run ..\logicSrv\logicSrv.go 50700
+go run ..\service\logicSrv\logicSrv\logicSrv.go 50700
 pause

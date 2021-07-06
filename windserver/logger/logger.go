@@ -1,4 +1,4 @@
-package windserver
+package logger
 
 // 使用zap
 type Logger struct {

@@ -1,10 +1,11 @@
-package windserver
+package discovery
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/mvcc/mvccpb"
+	"github.com/ferris1/windserver/windserver"
 	"go.etcd.io/etcd/clientv3"
 	"strconv"
 	"strings"
@@ -21,27 +22,27 @@ type ServerGroupManagerBasic struct {
 	watcher 			clientv3.Watcher
 	etcdLease      		clientv3.Lease
 	leaseGrantResp 		*clientv3.LeaseGrantResponse
-	srv            		*windServer
+	srv            		*windserver.windServer
 	etcdLeaseTTl 		int
 	etcdEvent 			chan clientv3.Event
 	watchTypes			map[int]bool
 	etcdWatch        	[]clientv3.WatchChan
-	onlineServers		map[int]map[string]ServerMetaInfo      // server
+	onlineServers		map[int]map[string]windserver.ServerMetaInfo // server
 }
 
-func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string, etcdTTl int) *ServerGroupManagerBasic{
+func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string, etcdTTl int) *ServerGroupManagerBasic {
 	return &ServerGroupManagerBasic{etcdConfig: config,etcdGroup: etcdGroup, etcdLeaseTTl: etcdTTl}
 }
 
-func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windServer) {
-	client, err := clientv3.New(ETCDCONFIG)
+func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windserver.windServer) {
+	client, err := clientv3.New(windserver.ETCDCONFIG)
 	if err != nil {
 		println(err)
 		return
 	}
 	sgm.etcdLease = nil
 	sgm.watchTypes = make(map[int]bool)
-	sgm.onlineServers = make(map[int]map[string]ServerMetaInfo)
+	sgm.onlineServers = make(map[int]map[string]windserver.ServerMetaInfo)
 	sgm.etcdClient = client
 	sgm.srv = serverInst
 	sgm.etcdEvent = make(chan clientv3.Event)
@@ -91,7 +92,7 @@ func  (sgm *ServerGroupManagerBasic) CloseWatch()  {
 func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	var prefix = "/" + sgm.etcdGroup + "/servers/"
 	for serverType := range sgm.watchTypes {
-		sgm.onlineServers[serverType] = make(map[string]ServerMetaInfo)
+		sgm.onlineServers[serverType] = make(map[string]windserver.ServerMetaInfo)
 		serverType := serverType
 		var node = prefix + strconv.Itoa(serverType) + "/"
 		watchRespChan := sgm.watcher.Watch(ctx, node,clientv3.WithPrefix())
@@ -166,7 +167,7 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event clientv3.Event) {
 			println("json.Unmarshal value:",value, " fail")
 			return
 		}
-		var info = ServerMetaInfo{}
+		var info = windserver.ServerMetaInfo{}
 		info.Ip = dat["Ip"].(string)
 		info.Port = int(dat["Port"].(float64))
 		info.IntId = int(dat["IntId"].(float64))
