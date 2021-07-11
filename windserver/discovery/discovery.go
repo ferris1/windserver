@@ -19,39 +19,26 @@ var (
 type Discovery interface {
 	SetUp(...Option) error
 	Options() Options
-	Register(*Service, ...RegisterOption) error
-	Deregister(*Service, ...DeregisterOption) error
-	GetService(string, ...GetOption) ([]*Service, error)
-	ListServices(...ListOption) ([]*Service, error)
+	Register(*Node, ...RegisterOption) error
+	Deregister(*Node, ...DeregisterOption) error
+	GetService(string, ...GetOption) (Service, error)
+	ListServices(...ListOption) (Service, error)
 	Watch(...WatchOption) (Watcher, error)
 	String() string
 }
 
 type Service struct {
-	Name      string            `json:"name"`
-	Version   string            `json:"version"`
-	Metadata  map[string]string `json:"metadata"`
-	Endpoints []*Endpoint       `json:"endpoints"`
-	Nodes     []*Node           `json:"nodes"`
+	Name        string            	`json:"name"`
+	Version   	string            	`json:"version"`
+	Nodes     	[]*Node				`json:"nodes"`
+	Metadata  	map[string]string 	`json:"metadata"`
 }
 
 type Node struct {
-	Id       string            `json:"id"`
-	Address  string            `json:"address"`
-	Metadata map[string]string `json:"metadata"`
-}
-
-type Endpoint struct {
-	Name     string            `json:"name"`
-	Request  *Value            `json:"request"`
-	Response *Value            `json:"response"`
-	Metadata map[string]string `json:"metadata"`
-}
-
-type Value struct {
-	Name   string   `json:"name"`
-	Type   string   `json:"type"`
-	Values []*Value `json:"values"`
+	Id       string            		`json:"id"`
+	Address  string            		`json:"address"`
+	Type 	 string 					`json:"type"`
+	Metadata map[string]string 		`json:"metadata"`
 }
 
 type Option func(*Options)
@@ -60,19 +47,19 @@ type RegisterOption func(*RegisterOptions)
 
 type WatchOption func(*WatchOptions)
 
-type bDeregisterOption func(*DeregisterOptions)
+type DeregisterOption func(*DeregisterOptions)
 
 type GetOption func(*GetOptions)
 
 type ListOption func(*ListOptions)
 
 // Register a service node. Additionally supply options such as TTL.
-func Register(s *Service, opts ...RegisterOption) error {
-	return DefaultDiscovery.Register(s, opts...)
+func Register(n *Node, opts ...RegisterOption) error {
+	return DefaultDiscovery.Register(n, opts...)
 }
 
 // Deregister a service node
-func Deregister(s *Service) error {
+func Deregister(s *Node) error {
 	return DefaultDiscovery.Deregister(s)
 }
 

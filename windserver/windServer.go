@@ -43,7 +43,7 @@ type windServer struct {
 	commandMap 			map[string]string
 	// 客戶端连接管理
 	connMgr 			*ConnManager
-	serverGroupMgr 		*discovery.EtcdDiscovery
+	serverGroupMgr 		*discovery.etcdDiscovery
 	intervalJob 		*gron.Cron
 	ctx                  context.Context
 }

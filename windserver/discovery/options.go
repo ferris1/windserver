@@ -7,10 +7,12 @@ import (
 )
 
 type Options struct {
-	Addrs     []string
-	Timeout   time.Duration
-	Secure    bool
-	TLSConfig *tls.Config
+	Addrs     		[]string
+	Timeout   		time.Duration
+	Secure    		bool
+	TLSConfig 		*tls.Config
+	Username		string
+	Password		string
 
 	Context context.Context
 }
@@ -39,10 +41,8 @@ type ListOptions struct {
 
 func Auth(username, password string) Option {
 	return func(o *Options) {
-		if o.Context == nil {
-			o.Context = context.Background()
-		}
-		o.Context = context.WithValue(o.Context, authKey{}, &authCreds{Username: username, Password: password})
+		o.Username = username
+		o.Password = password
 	}
 }
 
@@ -93,7 +93,7 @@ func WatchContext(ctx context.Context) WatchOption {
 	}
 }
 
-func DeregisterContext(ctx context.Context) DeregisterOption {
+func DeregisterContext(ctx context.Context) DeregisterOptions {
 	return func(o *DeregisterOptions) {
 		o.Context = ctx
 	}

@@ -2,42 +2,42 @@ package discovery
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/ferris1/windserver/windserver"
 	"go.etcd.io/etcd/clientv3"
+	"net"
 	"os"
+	"path"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
+var (
+	prefix = "/windserver/discovery/"
+)
 
-type EtcdDiscovery struct {
-	etcdAddr       		string
-	etcdGroup      		string
-	useGrpcProxy   		bool
-	etcdConfig     		clientv3.Config
-	etcdClient     		*clientv3.Client
-	kv 					clientv3.KV
-	watcher 			clientv3.Watcher
-	etcdLease      		clientv3.Lease
-	leaseGrantResp 		*clientv3.LeaseGrantResponse
-	etcdLeaseTTl 		int
-	etcdEvent 			chan clientv3.Event
-	watchTypes			map[int]bool
-	etcdWatch        	[]clientv3.WatchChan
-	onlineServers		map[int]map[string]windserver.ServerMetaInfo // server
-
+type etcdDiscovery struct {
+	sync.RWMutex
+	client 				*clientv3.Client
+	onlineService 		map[int]Service
 	options   			Options
+	lease      			clientv3.LeaseID
+	register 			string
 }
 
 func NewDiscovery(opts ...Option) Discovery {
-	etcd := &EtcdDiscovery{
+	etcd := &etcdDiscovery{
 		options:  Options{},
-		register: make(map[string]uint64),
-		leases:   make(map[string]clientv3.LeaseID),
+		onlineService: make(map[int]Service),
 	}
+	opts = getEnvConfig(opts...)
+	_ = configure(etcd, opts...)
 	return etcd
 }
 
@@ -53,95 +53,199 @@ func getEnvConfig(opts ...Option) []Option {
 	return opts
 }
 
-func (sgm *EtcdDiscovery) SetUp() {
-	client, err := clientv3.New(windserver.ETCDCONFIG)
-	if err != nil {
-		println(err)
-		return
+func configure(e *etcdDiscovery, opts ...Option) error {
+	config := clientv3.Config{
+		Endpoints: etcdEndpoints,
 	}
-	sgm.etcdLease = nil
-	sgm.watchTypes = make(map[int]bool)
-	sgm.onlineServers = make(map[int]map[string]windserver.ServerMetaInfo)
-	sgm.etcdClient = client
-	sgm.etcdEvent = make(chan clientv3.Event)
-	sgm.kv = clientv3.NewKV(client)
-	sgm.watcher = clientv3.NewWatcher(client)
+
+	for _, o := range opts {
+		o(&e.options)
+	}
+
+	if e.options.Timeout == 0 {
+		e.options.Timeout = 5 * time.Second
+	}
+	config.DialTimeout = e.options.Timeout
+
+	if e.options.Secure || e.options.TLSConfig != nil {
+		tlsConfig := e.options.TLSConfig
+		if tlsConfig == nil {
+			tlsConfig = &tls.Config{
+				InsecureSkipVerify: true,
+			}
+		}
+		config.TLS = tlsConfig
+	}
+
+	if e.options.Username != "" {
+		config.Username = e.options.Username
+		config.Password = e.options.Password
+	}
+
+	var cAddrs []string
+
+	for _, address := range e.options.Addrs {
+		if len(address) == 0 {
+			continue
+		}
+		addr, port, err := net.SplitHostPort(address)
+		if ae, ok := err.(*net.AddrError); ok && ae.Err == "missing port in address" {
+			port = "2379"
+			addr = address
+			cAddrs = append(cAddrs, net.JoinHostPort(addr, port))
+		} else if err == nil {
+			cAddrs = append(cAddrs, net.JoinHostPort(addr, port))
+		}
+	}
+
+	// if we got addrs then we'll update
+	if len(cAddrs) > 0 {
+		config.Endpoints = cAddrs
+	}
+
+	cli, err := clientv3.New(config)
+	if err != nil {
+		return err
+	}
+	e.client = cli
+	return nil
 }
 
-func (sgm *EtcdDiscovery) StartService(ctx context.Context) {
-	go sgm.ProcessEtcdEvents(ctx)
-	sgm.WatchServers(ctx)
-	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), sgm.etcdLeaseTTl)
+func nodePath(s, id string) string {
+	return path.Join(prefix, s, id)
 }
 
-func (sgm *EtcdDiscovery) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
-	sgm.etcdLease = clientv3.NewLease(sgm.etcdClient)
+func encode(s *Node) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+func decode(ds []byte) *Node {
+	var s *Node
+	json.Unmarshal(ds, &s)
+	return s
+}
+
+func (e *etcdDiscovery) SetUp(opts ...Option) {
+	_ = configure(e, opts...)
+}
+
+func (e *etcdDiscovery) Options() Options {
+	return e.options
+}
+
+func (e *etcdDiscovery) StartService(ctx context.Context) {
+	go e.ProcessEtcdEvents(ctx)
+	e.WatchServers(ctx)
+}
+
+func (e *etcdDiscovery) Register(n *Node, opts ...RegisterOption) error {
+	return e.registerNode(n, opts...)
+}
+
+func (e *etcdDiscovery) registerNode(node *Node, opts ...RegisterOption) error {
+	var options RegisterOptions
+	var lgr *clientv3.LeaseGrantResponse
 	var err error
-	sgm.leaseGrantResp, err = sgm.etcdLease.Grant(ctx, int64(etcdTTl))
+	for _, o := range opts {
+		o(&options)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), e.options.Timeout)
+	defer cancel()
+
+	if options.TTL.Seconds() > 0 {
+		// get a lease used to expire keys since we have a ttl
+		lgr, err = e.client.Grant(ctx, int64(options.TTL.Seconds()))
+		if err != nil {
+			return err
+		}
+	}
+	if lgr != nil {
+		_, err = e.client.Put(ctx, nodePath(node.Type, node.Id), encode(node), clientv3.WithLease(lgr.ID))
+	} else {
+		_, err = e.client.Put(ctx, nodePath(node.Type, node.Id), encode(node))
+	}
 	if err != nil {
 		println("update server info to etcd error:", err)
-		return
+		return err
 	}
-	var nodeKey = "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
-	info := sgm.srv.GetReportInfo()
-	_, err = sgm.kv.Put(ctx, nodeKey, info, clientv3.WithLease(sgm.leaseGrantResp.ID))
-	if err != nil {
-		println("update server info to etcd error:", err)
-		return
-	}
-	println("update info to etcd", serverType, serverId, info, nodeKey)
+	e.lease = lgr.ID
+	e.register = node.Type + node.Id
+	return nil
 }
 
-func (sgm *EtcdDiscovery) AddWatch(lst []int) {
+func (e *etcdDiscovery) Deregister(n *Node, opts ...DeregisterOption) error {
+	e.Lock()
+	e.lease = 0
+	e.register = ""
+	e.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), e.options.Timeout)
+	defer cancel()
+
+	_, err := e.client.Delete(ctx, nodePath(n.Type, n.Id))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *etcdRegistry) GetService(name string, opts ...GetOption) ([]*Service, error) {
+
+}
+
+
+func (e *etcdDiscovery) AddWatch(lst []int) {
 	var le = len(lst)
 	for idx:=0; idx<le; idx++ {
 		var serverType = lst[idx]
-		sgm.watchTypes[serverType] = true
+		e.watchTypes[serverType] = true
 	}
 }
 
-func  (sgm *EtcdDiscovery) CloseWatch()  {
-	err := sgm.watcher.Close()
+func  (e *etcdDiscovery) CloseWatch()  {
+	err := e.watcher.Close()
 	if err!= nil {
 		println("watcher close error", err)
 	}
 }
 
-func  (sgm *EtcdDiscovery) WatchServers(ctx context.Context)  {
-	var prefix = "/" + sgm.etcdGroup + "/servers/"
-	for serverType := range sgm.watchTypes {
-		sgm.onlineServers[serverType] = make(map[string]windserver.ServerMetaInfo)
+func  (e *etcdDiscovery) WatchServers(ctx context.Context)  {
+	var prefix = "/" + e.etcdGroup + "/servers/"
+	for serverType := range e.watchTypes {
+		e.onlineServers[serverType] = make(map[string]windserver.ServerMetaInfo)
 		serverType := serverType
 		var node = prefix + strconv.Itoa(serverType) + "/"
-		watchRespChan := sgm.watcher.Watch(ctx, node,clientv3.WithPrefix())
-		go sgm.ProcessOneWatchChan(ctx, watchRespChan)
+		watchRespChan := e.watcher.Watch(ctx, node,clientv3.WithPrefix())
+		go e.ProcessOneWatchChan(ctx, watchRespChan)
 	}
-	sgm.UpdateWatchServers()
+	e.UpdateWatchServers()
 }
 
-func  (sgm *EtcdDiscovery) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
-	for !sgm.srv.serverExited {
+func  (e *etcdDiscovery) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
+	for !e.srv.serverExited {
 		select {
 		case <-ctx.Done():
 				return
 		case watchResp := <-watchRespChan:
 			for _,event := range watchResp.Events {
 				println("the event ", string(event.Type), string(event.Kv.Key), string(event.Kv.Value))
-				sgm.etcdEvent <- *event
+				e.etcdEvent <- *event
 			}
 		}
 	}
 }
 
-func  (sgm *EtcdDiscovery) UpdateWatchServers()  {
+func  (e *etcdDiscovery) UpdateWatchServers()  {
 	println("Update Watch Servers")
-	for serverType := range sgm.watchTypes {
-		sgm.UpdateServersByType(serverType)
+	for serverType := range e.watchTypes {
+		e.UpdateServersByType(serverType)
 	}
 }
 
-func  (sgm *EtcdDiscovery) UpdateServersByType(serverType int)  {
-	curServer := sgm.onlineServers[serverType]
+func  (e *etcdDiscovery) UpdateServersByType(serverType int)  {
+	curServer := e.onlineServers[serverType]
 	for sid,info := range curServer {
 		var jsonInfo,err = json.Marshal(info)
 		if err != nil {
@@ -152,25 +256,25 @@ func  (sgm *EtcdDiscovery) UpdateServersByType(serverType int)  {
 	}
 }
 
-func (sgm *EtcdDiscovery) ProcessEtcdEvents(ctx context.Context) {
-	for !sgm.srv.serverExited {
+func (e *etcdDiscovery) ProcessEtcdEvents(ctx context.Context) {
+	for !e.srv.serverExited {
 		select {
 		case <-ctx.Done():
 			return
-		case e := <- sgm.etcdEvent:
-			sgm.ProcessOneEtcdEvent(e)
+		case e := <- e.etcdEvent:
+			e.ProcessOneEtcdEvent(e)
 		}
 	}
 }
 
-func (sgm *EtcdDiscovery) ProcessOneEtcdEvent(event clientv3.Event) {
+func (e *etcdDiscovery) ProcessOneEtcdEvent(event clientv3.Event) {
 	var param = strings.Split(string(event.Kv.Key), "/")
 	serverType, err := strconv.Atoi(param[len(param) -2])
 	if err != nil {
 		println(err)
 		return
 	}
-	curServers,ok := sgm.onlineServers[serverType]
+	curServers,ok := e.onlineServers[serverType]
 	if !ok {
 		return
 	}
@@ -190,25 +294,25 @@ func (sgm *EtcdDiscovery) ProcessOneEtcdEvent(event clientv3.Event) {
 		info.Port = int(dat["Port"].(float64))
 		info.IntId = int(dat["IntId"].(float64))
 		curServers[sid] = info
-		sgm.onServerAdd(sid, string(value))
+		e.onServerAdd(sid, string(value))
 	case mvccpb.DELETE:
 		if has {
 			delete(curServers,sid)
-			sgm.onServerDelete(sid)
+			e.onServerDelete(sid)
 		}
 	}
 }
 
-func (sgm *EtcdDiscovery) onServerDelete(sid string) {
+func (e *etcdDiscovery) onServerDelete(sid string) {
 	println("onServerDelete:",sid)
 }
 
-func (sgm *EtcdDiscovery) onServerAdd(sid string, info string) {
+func (e *etcdDiscovery) onServerAdd(sid string, info string) {
 	println("onServerAdd:",sid, " info:",info)
 }
 
-func (sgm *EtcdDiscovery) CheckServerOnline(sid string, serverType int) bool {
-	srvs,has := sgm.onlineServers[serverType]
+func (e *etcdDiscovery) CheckServerOnline(sid string, serverType int) bool {
+	srvs,has := e.onlineServers[serverType]
 	if has {
 		_,in := srvs[sid]
 		if in {
@@ -218,26 +322,26 @@ func (sgm *EtcdDiscovery) CheckServerOnline(sid string, serverType int) bool {
 	return false
 }
 
-func (sgm *EtcdDiscovery) CleanEtcd(ctx context.Context) {
-	var serverType = sgm.srv.GetServerType()
-	var serverId = sgm.srv.GetServerId()
-	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
-	_,err := sgm.kv.Delete(ctx, nodeKey)
+func (e *etcdDiscovery) CleanEtcd(ctx context.Context) {
+	var serverType = e.srv.GetServerType()
+	var serverId = e.srv.GetServerId()
+	nodeKey := "/" + e.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
+	_,err := e.kv.Delete(ctx, nodeKey)
 	if err!=nil {
 		println("error in clean Etcd")
 	}
 }
 
-func (sgm *EtcdDiscovery) EtcdTick(ctx context.Context) {
-	if sgm.srv.serverExited  {
+func (e *etcdDiscovery) EtcdTick(ctx context.Context) {
+	if e.srv.serverExited  {
 		return
 	}
-	if sgm.etcdLease == nil || sgm.etcdLeaseTTl == 0 {
+	if e.etcdLease == nil || e.etcdLeaseTTl == 0 {
 		return
 	}
-	if keepRespChan, err := sgm.etcdLease.KeepAliveOnce(ctx, sgm.leaseGrantResp.ID); err != nil {
+	if keepRespChan, err := e.etcdLease.KeepAliveOnce(ctx, e.leaseGrantResp.ID); err != nil {
 		fmt.Println(err)
-		sgm.etcdLease = nil
+		e.etcdLease = nil
 		return
 	} else {
 		if keepRespChan!=nil {
