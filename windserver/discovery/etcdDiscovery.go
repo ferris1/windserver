@@ -7,12 +7,13 @@ import (
 	"github.com/coreos/etcd/mvcc/mvccpb"
 	"github.com/ferris1/windserver/windserver"
 	"go.etcd.io/etcd/clientv3"
+	"os"
 	"strconv"
 	"strings"
 )
 
 
-type ServerGroupManagerBasic struct {
+type EtcdDiscovery struct {
 	etcdAddr       		string
 	etcdGroup      		string
 	useGrpcProxy   		bool
@@ -22,19 +23,37 @@ type ServerGroupManagerBasic struct {
 	watcher 			clientv3.Watcher
 	etcdLease      		clientv3.Lease
 	leaseGrantResp 		*clientv3.LeaseGrantResponse
-	srv            		*windserver.windServer
 	etcdLeaseTTl 		int
 	etcdEvent 			chan clientv3.Event
 	watchTypes			map[int]bool
 	etcdWatch        	[]clientv3.WatchChan
 	onlineServers		map[int]map[string]windserver.ServerMetaInfo // server
+
+	options   			Options
 }
 
-func NewServerGroupManagerBasic(config clientv3.Config, etcdGroup string, etcdTTl int) *ServerGroupManagerBasic {
-	return &ServerGroupManagerBasic{etcdConfig: config,etcdGroup: etcdGroup, etcdLeaseTTl: etcdTTl}
+func NewDiscovery(opts ...Option) Discovery {
+	etcd := &EtcdDiscovery{
+		options:  Options{},
+		register: make(map[string]uint64),
+		leases:   make(map[string]clientv3.LeaseID),
+	}
+	return etcd
 }
 
-func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windserver.windServer) {
+func getEnvConfig(opts ...Option) []Option {
+	username, password := os.Getenv("ETCD_USERNAME"), os.Getenv("ETCD_PASSWORD")
+	if len(username) > 0 && len(password) > 0 {
+		opts = append(opts, Auth(username, password))
+	}
+	address := os.Getenv("MICRO_REGISTRY_ADDRESS")
+	if len(address) > 0 {
+		opts = append(opts, Addrs(address))
+	}
+	return opts
+}
+
+func (sgm *EtcdDiscovery) SetUp() {
 	client, err := clientv3.New(windserver.ETCDCONFIG)
 	if err != nil {
 		println(err)
@@ -44,19 +63,18 @@ func (sgm *ServerGroupManagerBasic) SetUp(serverInst *windserver.windServer) {
 	sgm.watchTypes = make(map[int]bool)
 	sgm.onlineServers = make(map[int]map[string]windserver.ServerMetaInfo)
 	sgm.etcdClient = client
-	sgm.srv = serverInst
 	sgm.etcdEvent = make(chan clientv3.Event)
 	sgm.kv = clientv3.NewKV(client)
 	sgm.watcher = clientv3.NewWatcher(client)
 }
 
-func (sgm *ServerGroupManagerBasic) StartService(ctx context.Context) {
+func (sgm *EtcdDiscovery) StartService(ctx context.Context) {
 	go sgm.ProcessEtcdEvents(ctx)
 	sgm.WatchServers(ctx)
 	sgm.registerServerEtcd(ctx,sgm.srv.GetServerId(),sgm.srv.GetServerType(), sgm.etcdLeaseTTl)
 }
 
-func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
+func (sgm *EtcdDiscovery) registerServerEtcd(ctx context.Context,serverId string, serverType int, etcdTTl int) {
 	sgm.etcdLease = clientv3.NewLease(sgm.etcdClient)
 	var err error
 	sgm.leaseGrantResp, err = sgm.etcdLease.Grant(ctx, int64(etcdTTl))
@@ -74,7 +92,7 @@ func (sgm *ServerGroupManagerBasic) registerServerEtcd(ctx context.Context,serve
 	println("update info to etcd", serverType, serverId, info, nodeKey)
 }
 
-func (sgm *ServerGroupManagerBasic) AddWatch(lst []int) {
+func (sgm *EtcdDiscovery) AddWatch(lst []int) {
 	var le = len(lst)
 	for idx:=0; idx<le; idx++ {
 		var serverType = lst[idx]
@@ -82,14 +100,14 @@ func (sgm *ServerGroupManagerBasic) AddWatch(lst []int) {
 	}
 }
 
-func  (sgm *ServerGroupManagerBasic) CloseWatch()  {
+func  (sgm *EtcdDiscovery) CloseWatch()  {
 	err := sgm.watcher.Close()
 	if err!= nil {
 		println("watcher close error", err)
 	}
 }
 
-func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
+func  (sgm *EtcdDiscovery) WatchServers(ctx context.Context)  {
 	var prefix = "/" + sgm.etcdGroup + "/servers/"
 	for serverType := range sgm.watchTypes {
 		sgm.onlineServers[serverType] = make(map[string]windserver.ServerMetaInfo)
@@ -101,7 +119,7 @@ func  (sgm *ServerGroupManagerBasic) WatchServers(ctx context.Context)  {
 	sgm.UpdateWatchServers()
 }
 
-func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
+func  (sgm *EtcdDiscovery) ProcessOneWatchChan(ctx context.Context, watchRespChan clientv3.WatchChan)  {
 	for !sgm.srv.serverExited {
 		select {
 		case <-ctx.Done():
@@ -115,14 +133,14 @@ func  (sgm *ServerGroupManagerBasic) ProcessOneWatchChan(ctx context.Context, wa
 	}
 }
 
-func  (sgm *ServerGroupManagerBasic) UpdateWatchServers()  {
+func  (sgm *EtcdDiscovery) UpdateWatchServers()  {
 	println("Update Watch Servers")
 	for serverType := range sgm.watchTypes {
 		sgm.UpdateServersByType(serverType)
 	}
 }
 
-func  (sgm *ServerGroupManagerBasic) UpdateServersByType(serverType int)  {
+func  (sgm *EtcdDiscovery) UpdateServersByType(serverType int)  {
 	curServer := sgm.onlineServers[serverType]
 	for sid,info := range curServer {
 		var jsonInfo,err = json.Marshal(info)
@@ -134,7 +152,7 @@ func  (sgm *ServerGroupManagerBasic) UpdateServersByType(serverType int)  {
 	}
 }
 
-func (sgm *ServerGroupManagerBasic) ProcessEtcdEvents(ctx context.Context) {
+func (sgm *EtcdDiscovery) ProcessEtcdEvents(ctx context.Context) {
 	for !sgm.srv.serverExited {
 		select {
 		case <-ctx.Done():
@@ -145,7 +163,7 @@ func (sgm *ServerGroupManagerBasic) ProcessEtcdEvents(ctx context.Context) {
 	}
 }
 
-func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event clientv3.Event) {
+func (sgm *EtcdDiscovery) ProcessOneEtcdEvent(event clientv3.Event) {
 	var param = strings.Split(string(event.Kv.Key), "/")
 	serverType, err := strconv.Atoi(param[len(param) -2])
 	if err != nil {
@@ -181,15 +199,15 @@ func (sgm *ServerGroupManagerBasic) ProcessOneEtcdEvent(event clientv3.Event) {
 	}
 }
 
-func (sgm *ServerGroupManagerBasic) onServerDelete(sid string) {
+func (sgm *EtcdDiscovery) onServerDelete(sid string) {
 	println("onServerDelete:",sid)
 }
 
-func (sgm *ServerGroupManagerBasic) onServerAdd(sid string, info string) {
+func (sgm *EtcdDiscovery) onServerAdd(sid string, info string) {
 	println("onServerAdd:",sid, " info:",info)
 }
 
-func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int) bool {
+func (sgm *EtcdDiscovery) CheckServerOnline(sid string, serverType int) bool {
 	srvs,has := sgm.onlineServers[serverType]
 	if has {
 		_,in := srvs[sid]
@@ -200,7 +218,7 @@ func (sgm *ServerGroupManagerBasic) CheckServerOnline(sid string, serverType int
 	return false
 }
 
-func (sgm *ServerGroupManagerBasic) CleanEtcd(ctx context.Context) {
+func (sgm *EtcdDiscovery) CleanEtcd(ctx context.Context) {
 	var serverType = sgm.srv.GetServerType()
 	var serverId = sgm.srv.GetServerId()
 	nodeKey := "/" + sgm.etcdGroup + "/servers/" + strconv.Itoa(serverType) + "/" + serverId
@@ -210,7 +228,7 @@ func (sgm *ServerGroupManagerBasic) CleanEtcd(ctx context.Context) {
 	}
 }
 
-func (sgm *ServerGroupManagerBasic) EtcdTick(ctx context.Context) {
+func (sgm *EtcdDiscovery) EtcdTick(ctx context.Context) {
 	if sgm.srv.serverExited  {
 		return
 	}

@@ -43,7 +43,7 @@ type windServer struct {
 	commandMap 			map[string]string
 	// 客戶端连接管理
 	connMgr 			*ConnManager
-	serverGroupMgr 		*discovery.ServerGroupManagerBasic
+	serverGroupMgr 		*discovery.EtcdDiscovery
 	intervalJob 		*gron.Cron
 	ctx                  context.Context
 }
@@ -73,7 +73,7 @@ func (s *windServer) SetUp() {
 	s.intervalJob = gron.New()
 	s.serverExited = false
 	s.totalConnectCount = SERVERMAXCONNECT
-	s.serverGroupMgr = discovery.NewServerGroupManagerBasic(ETCDCONFIG, "WindServer", EtcdTTl)
+	s.serverGroupMgr = discovery.NewEtcdDiscovery(ETCDCONFIG, "WindServer", EtcdTTl)
 	s.serverGroupMgr.SetUp(s)
 	println("wind server base has SetUp....")
 }

@@ -1,12 +1,11 @@
 package discovery
 
-
 import (
 "errors"
 )
 
 var (
-	DefaultDiscovery = NewRegistry()
+	DefaultDiscovery = NewDiscovery()
 
 	// Not found error when GetService is called
 	ErrNotFound = errors.New("service not found")
@@ -17,8 +16,8 @@ var (
 // The registry provides an interface for service discovery
 // and an abstraction over varying implementations
 // {consul, etcd, zookeeper, ...}
-type Registry interface {
-	Init(...Option) error
+type Discovery interface {
+	SetUp(...Option) error
 	Options() Options
 	Register(*Service, ...RegisterOption) error
 	Deregister(*Service, ...DeregisterOption) error
@@ -61,7 +60,7 @@ type RegisterOption func(*RegisterOptions)
 
 type WatchOption func(*WatchOptions)
 
-type DeregisterOption func(*DeregisterOptions)
+type bDeregisterOption func(*DeregisterOptions)
 
 type GetOption func(*GetOptions)
 
