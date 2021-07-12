@@ -25,7 +25,7 @@ var (
 type etcdDiscovery struct {
 	sync.RWMutex
 	client 				*clientv3.Client
-	onlineService 		map[int]Service
+	onlineService 		map[string]Service
 	options   			Options
 	lease      			clientv3.LeaseID
 	register 			string
@@ -170,8 +170,10 @@ func (e *etcdDiscovery) registerNode(node *Node, opts ...RegisterOption) error {
 		println("update server info to etcd error:", err)
 		return err
 	}
+	e.Lock()
 	e.lease = lgr.ID
 	e.register = node.Type + node.Id
+	e.Unlock()
 	return nil
 }
 
@@ -191,7 +193,7 @@ func (e *etcdDiscovery) Deregister(n *Node, opts ...DeregisterOption) error {
 	return nil
 }
 
-func (e *etcdRegistry) GetService(name string, opts ...GetOption) ([]*Service, error) {
+func (e *etcdDiscovery) GetService(name string, opts ...GetOption) (*Service, error) {
 
 }
 
@@ -204,14 +206,11 @@ func (e *etcdDiscovery) AddWatch(lst []int) {
 	}
 }
 
-func  (e *etcdDiscovery) CloseWatch()  {
-	err := e.watcher.Close()
-	if err!= nil {
-		println("watcher close error", err)
+func  (e *etcdDiscovery) Watch(opts ...WatchOption)  {
+	var options WatchOptions
+	for _, o := range opts {
+		o(&options)
 	}
-}
-
-func  (e *etcdDiscovery) WatchServers(ctx context.Context)  {
 	var prefix = "/" + e.etcdGroup + "/servers/"
 	for serverType := range e.watchTypes {
 		e.onlineServers[serverType] = make(map[string]windserver.ServerMetaInfo)

@@ -23,7 +23,7 @@ type RegisterOptions struct {
 }
 
 type WatchOptions struct {
-	Service string
+	Service []string
 	Context context.Context
 }
 

@@ -13,9 +13,7 @@ var (
 	ErrWatcherStopped = errors.New("watcher stopped")
 )
 
-// The registry provides an interface for service discovery
-// and an abstraction over varying implementations
-// {consul, etcd, zookeeper, ...}
+// service discovery
 type Discovery interface {
 	SetUp(...Option) error
 	Options() Options
@@ -28,7 +26,7 @@ type Discovery interface {
 }
 
 type Service struct {
-	Name        string            	`json:"name"`
+	Type        string            	`json:"type"`
 	Version   	string            	`json:"version"`
 	Nodes     	[]*Node				`json:"nodes"`
 	Metadata  	map[string]string 	`json:"metadata"`
@@ -37,7 +35,7 @@ type Service struct {
 type Node struct {
 	Id       string            		`json:"id"`
 	Address  string            		`json:"address"`
-	Type 	 string 					`json:"type"`
+	Type 	 string 				`json:"type"`
 	Metadata map[string]string 		`json:"metadata"`
 }
 
@@ -64,8 +62,8 @@ func Deregister(s *Node) error {
 }
 
 // Retrieve a service. A slice is returned since we separate Name/Version.
-func GetService(name string) ([]*Service, error) {
-	return DefaultDiscovery.GetService(name)
+func GetService(sType string) ([]*Service, error) {
+	return DefaultDiscovery.GetService(sType)
 }
 
 // List the services. Only returns service names
