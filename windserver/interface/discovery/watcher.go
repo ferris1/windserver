@@ -1,9 +1,6 @@
 package discovery
 
 import (
-	"context"
-	"errors"
-	"go.etcd.io/etcd/clientv3"
 	"time"
 )
 
@@ -39,9 +36,9 @@ func (t EventType) String() string {
 }
 
 type Event struct {
-	Id string
-	Type EventType
-	Timestamp time.Time
-	Service *Service
+	Id 			string
+	Type 		EventType
+	Timestamp 	time.Time
+	Service 	*Service
 }
 
